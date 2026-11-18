@@ -3,43 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PageRank Crawler - PPW</title>
+<title>PageRank Network Explorer - PPW</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, Segoe UI, Roboto, sans-serif; background: #f3f5f9; color: #1f2937; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: #6b7280; margin-bottom: 20px; font-size: 14px; }
-  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 16px; }
+  body { margin: 0; font-family: system-ui, Segoe UI, Roboto, sans-serif; background: #07121f; color: #d7e6f5; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: #fff; }
+  .sub { color: #7f98b2; margin-bottom: 20px; font-size: 14px; }
+  .card { background: #0d1f33; border: 1px solid #16324f; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-  label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
-  input, select { padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+  label { display: block; font-size: 12px; color: #7f98b2; margin-bottom: 4px; }
+  input, select { padding: 9px 10px; border: 1px solid #1f4268; border-radius: 8px; font-size: 14px; background: #08182a; color: #e6f1fb; }
   input.url { width: 340px; max-width: 100%; }
-  button { padding: 10px 18px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
-  button:disabled { background: #93c5fd; cursor: wait; }
-  button.ghost { background: #e5e7eb; color: #111827; }
+  button { padding: 10px 18px; border: 0; border-radius: 8px; background: #19a7ce; color: #04121f; font-weight: 600; font-size: 14px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  button.ghost { background: #16324f; color: #cfe6fa; font-weight: 500; }
+  button.ghost:hover { background: #1d4166; }
+  .muted { color: #7f98b2; font-size: 13px; }
+  .err { color: #ff7b7b; }
+
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .stat { background: #f9fafb; border-radius: 10px; padding: 12px; }
-  .stat b { display: block; font-size: 20px; }
-  .stat span { font-size: 12px; color: #6b7280; }
+  .stat { background: #08182a; border: 1px solid #16324f; border-radius: 10px; padding: 12px; }
+  .stat b { display: block; font-size: 20px; color: #fff; }
+  .stat span { font-size: 12px; color: #7f98b2; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { background: #08182a; border: 1px solid #16324f; padding: 4px 10px; border-radius: 999px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+
+  /* ---------- kartu graph ---------- */
+  #graphCard { display: none; padding: 0; overflow: hidden; }
+  #graphCard.show { display: block; }
+  #graphCard.show:fullscreen { display: flex; flex-direction: column; border-radius: 0; background: #07121f; }
+  #graphCard:fullscreen #graphBox { flex: 1; height: auto; }
+
+  .gbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; border-bottom: 1px solid #16324f; }
+  .gbar button, .gbar select { padding: 7px 10px; font-size: 12px; }
+  .search { position: relative; flex: 1 1 220px; min-width: 180px; }
+  .search input { width: 100%; padding: 8px 10px; font-size: 13px; }
+  #sugg { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 30; background: #08182a; border: 1px solid #1f4268; border-radius: 8px; margin-top: 4px; max-height: 260px; overflow: auto; }
+  #sugg div { padding: 7px 10px; font-size: 12px; cursor: pointer; word-break: break-all; }
+  #sugg div:hover { background: #0f2c47; }
+
+  .gset { display: none; gap: 24px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid #16324f; background: #0a1a2c; }
+  .gset.open { display: flex; }
+  .gset label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+  .gset input[type=range] { padding: 0; border: 0; background: none; accent-color: #19a7ce; width: 190px; }
+
+  #graphBox {
+    position: relative; height: clamp(440px, 74vh, 800px); overflow: hidden;
+    background: radial-gradient(ellipse at 50% 45%, #10304d 0%, #0a1c2f 55%, #06101c 100%);
+  }
+  #graph { position: absolute; inset: 0; }
+  .counter {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5; white-space: nowrap;
+    display: flex; gap: 24px; padding: 7px 22px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    background: rgba(8, 24, 42, .75); border-bottom: 2px solid #19a7ce; border-radius: 0 0 8px 8px;
+  }
+  .counter b { color: #fff; font-size: 14px; margin-right: 6px; }
+  .legend { position: absolute; left: 10px; bottom: 10px; z-index: 5; background: rgba(8, 24, 42, .82); border: 1px solid #16324f; border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+  .lg { display: flex; align-items: center; gap: 6px; margin: 2px 0; cursor: pointer; user-select: none; padding: 1px 2px; }
+  .lg.off { opacity: .35; text-decoration: line-through; }
+  .legend .tt { font-size: 10px; color: #7f98b2; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .08em; }
+  .hint { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 4; font-size: 11px; color: #5f7d9a; white-space: nowrap; pointer-events: none; }
+  #tip {
+    position: absolute; z-index: 9; pointer-events: none; display: none; max-width: 90%; width: max-content;
+    background: rgba(5, 15, 27, .95); border: 1px solid #19a7ce; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.5; word-break: break-all;
+  }
+  #tip b { color: #fff; }
+
+  /* panel detail node */
+  #panel { display: none; position: absolute; z-index: 8; top: 44px; right: 10px; bottom: 10px; width: 310px; background: rgba(6, 17, 30, .95); border: 1px solid #1f4268; border-radius: 10px; overflow: auto; padding: 12px; font-size: 13px; }
+  #panel.show { display: block; }
+  .ph { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .ph b { word-break: break-all; color: #fff; font-size: 13px; line-height: 1.4; }
+  #pClose { padding: 2px 9px; background: #16324f; color: #fff; font-size: 14px; }
+  .pst { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+  .pst div { background: #08182a; border: 1px solid #16324f; border-radius: 8px; padding: 6px 8px; }
+  .pst b { display: block; color: #fff; font-size: 15px; }
+  .pst span { font-size: 11px; color: #7f98b2; }
+  #panel a.open { color: #7cf2ff; font-size: 12px; text-decoration: none; }
+  #panel h4 { margin: 14px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .it { padding: 5px 6px; border-radius: 6px; cursor: pointer; word-break: break-all; font-size: 12px; border-bottom: 1px solid #10283f; }
+  .it:hover { background: #0f2c47; }
+  .pbtn { margin-top: 4px; padding: 6px 10px; font-size: 12px; }
+  @media (max-width: 700px) {
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 48%; }
+    #graphBox.hasPanel .legend { display: none; }
+    .hint { display: none; }
+    .counter { gap: 14px; padding: 6px 14px; }
+  }
+
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eef0f3; vertical-align: top; }
-  th { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #16324f; vertical-align: top; }
+  th { font-size: 12px; color: #7f98b2; text-transform: uppercase; letter-spacing: .04em; }
   td.url { word-break: break-all; }
-  .rank { font-weight: 700; color: #2563eb; }
-  .bar { height: 8px; background: #dbeafe; border-radius: 4px; margin-top: 4px; }
-  .bar i { display: block; height: 100%; background: #2563eb; border-radius: 4px; }
-  .depth { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .chip { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 999px; font-size: 13px; }
-  .err { color: #b91c1c; }
-  .muted { color: #6b7280; font-size: 13px; }
+  tr.click { cursor: pointer; }
+  tr.click:hover { background: #0a2238; }
+  .rank { font-weight: 700; color: #19a7ce; }
+  .bar { height: 6px; background: #0a2238; border-radius: 4px; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: #19a7ce; border-radius: 4px; }
   .scroll { overflow-x: auto; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Analisis Link &amp; PageRank Website</h1>
-  <div class="sub">Masukkan URL, sistem akan crawling, membentuk graph, lalu menghitung 10 halaman terpenting.</div>
+  <h1>PageRank Network Explorer</h1>
+  <div class="sub">Masukkan URL, sistem crawling, membentuk graph antar halaman, lalu menghitung 10 halaman terpenting.</div>
 
   <div class="card">
     <div class="row">
@@ -49,9 +118,7 @@
       </div>
       <div>
         <label>Kedalaman maks</label>
-        <select id="depth">
-          <option>1</option><option selected>2</option><option>3</option><option>4</option>
-        </select>
+        <select id="depth"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
       </div>
       <div>
         <label>Maks halaman</label>
@@ -61,27 +128,484 @@
         <label>Batas waktu (detik)</label>
         <input id="time" type="number" value="40" min="5" max="55" style="width:100px">
       </div>
+      <div>
+        <label>Node digambar</label>
+        <input id="gnodes" type="number" value="1500" min="50" max="5000" style="width:100px">
+      </div>
       <button id="go">Mulai Crawling</button>
     </div>
     <div class="muted" style="margin-top:10px">Di Vercel, crawling dibatasi waktu request. Untuk graph besar, jalankan di server lab.</div>
   </div>
 
-  <div id="out"></div>
+  <div id="msg"></div>
+  <div id="stats"></div>
+
+  <div class="card" id="graphCard">
+    <div class="gbar">
+      <div class="search">
+        <input id="q" placeholder="Cari URL / halaman..." autocomplete="off">
+        <div id="sugg"></div>
+      </div>
+      <select id="layout">
+        <option value="force">Layout: Force</option>
+        <option value="radial">Layout: Radial per depth</option>
+      </select>
+      <select id="sizeBy">
+        <option value="pr">Ukuran: PageRank</option>
+        <option value="in">Ukuran: Inlink</option>
+        <option value="same">Ukuran: Sama</option>
+      </select>
+      <select id="labelMode">
+        <option value="auto">Label: otomatis</option>
+        <option value="off">Label: mati</option>
+      </select>
+      <button class="ghost" id="btnSet">Pengaturan</button>
+      <button class="ghost" id="btnFit">Fit</button>
+      <button class="ghost" id="btnRelayout">Susun ulang</button>
+      <button class="ghost" id="btnFs">Layar penuh</button>
+      <button class="ghost" id="btnDl">Unduh JSON</button>
+    </div>
+    <div class="gset" id="gset">
+      <label>Tolakan antar node <input type="range" id="sRep" min="20" max="200" value="60"></label>
+      <label>Jarak link <input type="range" id="sLink" min="5" max="30" value="10"></label>
+      <label><span><input type="checkbox" id="cPart" checked style="width:auto"> Partikel aliran pada link terpilih</span></label>
+    </div>
+    <div id="graphBox">
+      <div id="graph"></div>
+      <div class="counter">
+        <div><b id="cNodes">0</b>nodes</div>
+        <div><b id="cLinks">0</b>connections</div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="hint">scroll = zoom &middot; seret node = pin &middot; dobel klik = lepas pin &middot; klik kanan = buka halaman</div>
+      <div id="tip"></div>
+      <div id="panel">
+        <div class="ph"><b id="pTitle"></b><button id="pClose">&times;</button></div>
+        <div id="pBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="table"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.min.js"></script>
 <script>
-  // Saat dipindah ke server lab dengan frontend terpisah, isi dengan alamat API-nya, mis. "http://192.168.x.x:8000"
-  const API_BASE = "";
-  let lastResult = null;
+  // Saat frontend dipisah dari backend (mis. di server lab), isi dengan alamat API, contoh "http://192.168.x.x:8000"
+  const API_BASE = "http://127.0.0.1:8000";
 
+  const TAU = Math.PI * 2;
+  const COLORS = ["#ff5ca8", "#ffd54a", "#4fd1ff", "#7cf29a", "#b794f6", "#8aa0b5"];
+  const OUT_C = "#7cf2ff", IN_C = "#ffb454";
+  const colorOf = (d) => COLORS[Math.min(d, COLORS.length - 1)];
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  async function run(includeEdges) {
+  let Graph = null, lastResult = null;
+  let data = { nodes: [] }, links0 = [], nodeById = new Map(), outMap = new Map(), inMap = new Map();
+  let top10 = new Map(), hidden = new Set(), depthList = [];
+  let selected = null, hover = null, maxPr = 1, maxIn = 1, fitted = false, baseAlpha = 0.2;
+  let layout = "force", sizeBy = "pr", labelMode = "auto", spacing = 1, repulse = 60, particles = true;
+  let lastClick = { n: null, t: 0 };
+
+  const fnode = () => selected || hover;
+  const isNb = (n) => {
+    const f = fnode();
+    return !!f && (n === f || outMap.get(f.id)?.has(n.id) || inMap.get(f.id)?.has(n.id));
+  };
+  const depthOf = (x) => (typeof x === "object" ? x.depth : nodeById.get(x)?.depth);
+  const redraw = () => {
+    if (!Graph) return;
+    if (typeof Graph.refresh === "function") Graph.refresh();
+    else Graph.linkColor(Graph.linkColor());
+  };
+
+  function radius(n) {
+    let v;
+    if (sizeBy === "pr") v = Math.sqrt(n.pr / maxPr);
+    else if (sizeBy === "in") v = Math.sqrt(n.in / maxIn);
+    else v = 0.3;
+    return 2 + v * 11;
+  }
+
+  function shortUrl(u, max = 30) {
+    try {
+      const p = new URL(u);
+      const path = p.pathname === "/" ? "" : p.pathname;
+      const s = p.host.replace(/^www\./, "") + path;
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    } catch { return u.length > max ? u.slice(0, max - 1) + "…" : u; }
+  }
+
+  /* ---------------- inisialisasi graph ---------------- */
+  function initGraph() {
+    if (Graph) return;
+    const box = $("graphBox"), mount = $("graph");
+
+    Graph = ForceGraph()(mount)
+      .backgroundColor("rgba(0,0,0,0)")
+      .nodeId("id")
+      .width(box.clientWidth).height(box.clientHeight)
+      .warmupTicks(30).cooldownTicks(260)
+      .d3AlphaDecay(0.025).d3VelocityDecay(0.3)
+      .nodeRelSize(1)
+      .nodeVal((n) => { const r = radius(n); return r * r; })
+      .nodeLabel(() => "")
+      .nodeVisibility((n) => !hidden.has(n.depth))
+      .linkVisibility((l) => !hidden.has(depthOf(l.source)) && !hidden.has(depthOf(l.target)))
+      .linkColor((l) => {
+        const f = fnode();
+        if (!f) return `rgba(70,200,255,${baseAlpha})`;
+        if (l.source === f) return "rgba(124,242,255,.95)";
+        if (l.target === f) return "rgba(255,180,84,.95)";
+        return "rgba(70,200,255,.03)";
+      })
+      .linkWidth((l) => (fnode() && (l.source === fnode() || l.target === fnode()) ? 1.6 : 0.5))
+      .linkDirectionalParticles((l) => (particles && selected && (l.source === selected || l.target === selected) ? 3 : 0))
+      .linkDirectionalParticleWidth(2.2)
+      .linkDirectionalParticleColor((l) => (l.source === selected ? OUT_C : IN_C))
+      .linkDirectionalArrowLength((l) => (fnode() && (l.source === fnode() || l.target === fnode()) ? 4 : 0))
+      .linkDirectionalArrowRelPos(1)
+      .linkDirectionalArrowColor((l) => (l.source === fnode() ? OUT_C : IN_C))
+      .nodeCanvasObject(drawNode)
+      .nodePointerAreaPaint((n, color, ctx) => {
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, radius(n) + 2, 0, TAU); ctx.fill();
+      })
+      .onRenderFramePre(drawRings)
+      .onNodeHover((n) => { hover = n || null; mount.style.cursor = n ? "pointer" : ""; showTip(n); redraw(); })
+      .onNodeClick((n) => {
+        const now = Date.now();
+        if (lastClick.n === n && now - lastClick.t < 350) { unpin(n); lastClick = { n: null, t: 0 }; return; }
+        lastClick = { n, t: now };
+        selectNode(selected === n ? null : n, false);
+      })
+      .onNodeRightClick((n) => window.open(n.id, "_blank", "noopener"))
+      .onNodeDragEnd((n) => { n.fx = n.x; n.fy = n.y; if (selected === n) showPanel(n); redraw(); })
+      .onBackgroundClick(() => selectNode(null, false))
+      .onEngineStop(() => { if (!fitted) { Graph.zoomToFit(600, 50, (n) => !hidden.has(n.depth)); fitted = true; } });
+
+    box.addEventListener("mousemove", (e) => {
+      const r = box.getBoundingClientRect(), t = $("tip");
+      t.style.left = Math.max(4, Math.min(e.clientX - r.left + 14, r.width - t.offsetWidth - 8)) + "px";
+      t.style.top = Math.max(4, Math.min(e.clientY - r.top + 14, r.height - t.offsetHeight - 8)) + "px";
+    });
+    new ResizeObserver(() => Graph.width(box.clientWidth).height(box.clientHeight)).observe(box);
+    bindUI();
+  }
+
+  function applyForces() {
+    Graph.d3Force("charge").strength((n) => -repulse * (0.45 + radius(n) / 9)).distanceMax(450);
+    Graph.d3Force("link").distance((l) => (16 + 4.5 * Math.sqrt(Math.max(l.source.deg || 1, l.target.deg || 1))) * spacing);
+    if (window.d3) Graph.d3Force("collide", d3.forceCollide((n) => radius(n) + 1.6).strength(0.85).iterations(1));
+    Graph.d3Force("radial", layout === "radial" ? radialForce : null);
+  }
+
+  function radialForce(alpha) {
+    for (const n of data.nodes) {
+      if (n.x == null) continue;
+      const R = n.depth * 120 * spacing, d = Math.hypot(n.x, n.y) || 1, k = ((R - d) / d) * alpha * 0.35;
+      n.vx += n.x * k; n.vy += n.y * k;
+    }
+  }
+
+  function reheat(refit) {
+    if (refit) fitted = false;
+    Graph.d3ReheatSimulation();
+  }
+
+  /* ---------------- gambar node & latar ---------------- */
+  function drawRings(ctx, scale) {
+    if (layout !== "radial") return;
+    ctx.save();
+    ctx.setLineDash([4 / scale, 7 / scale]);
+    ctx.lineWidth = 1 / scale;
+    ctx.strokeStyle = "rgba(70,200,255,.14)";
+    ctx.fillStyle = "rgba(127,152,178,.7)";
+    ctx.font = `${10 / scale}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    depthList.filter((d) => d > 0).forEach((d) => {
+      const R = d * 120 * spacing;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+      ctx.fillText("Depth " + d, 0, -R - 4 / scale);
+    });
+    ctx.restore();
+  }
+
+  function onScreen(ctx, x, y) {
+    const t = ctx.getTransform();
+    const sx = t.a * x + t.e, sy = t.d * y + t.f;
+    return sx > -60 && sy > -60 && sx < ctx.canvas.width + 60 && sy < ctx.canvas.height + 60;
+  }
+
+  function drawLabel(ctx, text, x, y, scale, strong) {
+    const fs = (strong ? 12 : 10) / scale, pad = 3 / scale;
+    ctx.font = `${fs}px system-ui, sans-serif`;
+    const w = ctx.measureText(text).width;
+    ctx.fillStyle = "rgba(4,14,26,.85)";
+    ctx.fillRect(x - w / 2 - pad, y, w + pad * 2, fs + pad * 1.6);
+    ctx.fillStyle = "#e8f6ff";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(text, x, y + pad * 0.8);
+  }
+
+  function drawNode(n, ctx, scale) {
+    const r = radius(n), f = fnode(), rank = top10.get(n.id), col = colorOf(n.depth);
+    let alpha = 1;
+    if (f && !isNb(n)) alpha = selected ? 0.1 : 0.3;
+
+    // halo lembut (murah, tanpa shadowBlur)
+    if (alpha > 0.5) {
+      ctx.globalAlpha = 0.16; ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r * 2, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = alpha;
+    const glow = rank || n === selected || n === hover;
+    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 16; }
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, TAU); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (r > 3.5) {
+      ctx.fillStyle = "rgba(255,255,255,.32)";
+      ctx.beginPath(); ctx.arc(n.x - r * 0.3, n.y - r * 0.3, r * 0.34, 0, TAU); ctx.fill();
+    }
+    if (glow) {
+      ctx.lineWidth = 1.3 / scale; ctx.strokeStyle = "#fff";
+      ctx.beginPath(); ctx.arc(n.x, n.y, r + 1.6 / scale, 0, TAU); ctx.stroke();
+    }
+    if (n.fx != null) { // penanda pin
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(n.x + r * 0.7, n.y - r * 0.7 - 3 / scale, 3 / scale, 3 / scale);
+    }
+    if (rank) { // lencana nomor peringkat
+      const fs = Math.max(r * 1.05, 9 / scale);
+      ctx.font = `700 ${fs}px system-ui, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#04121f";
+      ctx.fillText(String(rank), n.x, n.y + fs * 0.05);
+    }
+
+    if (labelMode !== "off") {
+      const yy = n.y + r + 3 / scale;
+      if (n === selected || n === hover) drawLabel(ctx, shortUrl(n.id, 38), n.x, yy, scale, true);
+      else if (alpha === 1) {
+        if (f && isNb(n) && scale > 1.4) drawLabel(ctx, shortUrl(n.id), n.x, yy, scale, false);
+        else if (rank && scale > 1.8) drawLabel(ctx, shortUrl(n.id), n.x, yy, scale, false);
+        else if (!f && scale > 5 && onScreen(ctx, n.x, n.y)) drawLabel(ctx, shortUrl(n.id), n.x, yy, scale, false);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------------- tooltip, panel, seleksi ---------------- */
+  function showTip(n) {
+    const t = $("tip");
+    if (!n) { t.style.display = "none"; return; }
+    const rk = top10.get(n.id);
+    t.innerHTML = `<b>${esc(n.id)}</b><br>${rk ? "Peringkat #" + rk + " &middot; " : ""}PageRank: ${n.pr.toFixed(6)}<br>Depth: ${n.depth} &middot; Inlink: ${n.in} &middot; Outlink: ${n.out}<br><span style="color:#7f98b2">klik untuk detail</span>`;
+    t.style.display = "block";
+  }
+
+  function focusOn(n) {
+    Graph.centerAt(n.x, n.y, 600);
+    if (Graph.zoom() < 2) Graph.zoom(2.2, 600);
+  }
+
+  function selectNode(n, cam) {
+    selected = n || null;
+    showPanel(selected);
+    redraw();
+    if (selected && cam) focusOn(selected);
+  }
+
+  function unpin(n) {
+    n.fx = n.fy = undefined;
+    Graph.d3ReheatSimulation();
+    if (selected === n) showPanel(n);
+    redraw();
+  }
+
+  function showPanel(n) {
+    const panel = $("panel"), box = $("graphBox");
+    if (!n) { panel.classList.remove("show"); box.classList.remove("hasPanel"); return; }
+    const byPr = (a, b) => nodeById.get(b).pr - nodeById.get(a).pr;
+    const outs = [...(outMap.get(n.id) || [])].sort(byPr);
+    const ins = [...(inMap.get(n.id) || [])].sort(byPr);
+    const list = (arr) => arr.slice(0, 80).map((id) =>
+      `<div class="it" data-id="${esc(id)}" title="${esc(id)}">${esc(shortUrl(id, 48))}</div>`).join("") +
+      (arr.length > 80 ? `<div class="muted" style="padding:6px">+${arr.length - 80} lainnya</div>` : "") ||
+      '<div class="muted" style="padding:4px 6px">Tidak ada</div>';
+    const rk = top10.get(n.id);
+    $("pTitle").textContent = (rk ? "#" + rk + "  " : "") + shortUrl(n.id, 60);
+    $("pBody").innerHTML = `
+      <a class="open" href="${esc(n.id)}" target="_blank" rel="noopener">Buka halaman ↗</a>
+      <div class="pst">
+        <div><b>${n.pr.toFixed(6)}</b><span>PageRank</span></div>
+        <div><b>${n.depth}</b><span>Depth</span></div>
+        <div><b>${n.in}</b><span>Inlink (total)</span></div>
+        <div><b>${n.out}</b><span>Outlink (total)</span></div>
+      </div>
+      <button class="ghost pbtn" id="pPin">${n.fx != null ? "Lepas pin posisi" : "Pin posisi"}</button>
+      <h4 style="color:${OUT_C}">Outlink di graph (${outs.length})</h4>${list(outs)}
+      <h4 style="color:${IN_C}">Inlink di graph (${ins.length})</h4>${list(ins)}
+      <div class="muted" style="margin-top:10px;font-size:11px">Daftar hanya memuat node yang ikut digambar.</div>`;
+    panel.classList.add("show"); box.classList.add("hasPanel");
+    panel.scrollTop = 0;
+  }
+
+  /* ---------------- legend & counter ---------------- */
+  function buildLegend() {
+    const cnt = {};
+    data.nodes.forEach((n) => (cnt[n.depth] = (cnt[n.depth] || 0) + 1));
+    depthList = Object.keys(cnt).map(Number).sort((a, b) => a - b);
+    $("legend").innerHTML = '<div class="tt">Klik untuk sembunyikan</div>' + depthList.map((d) =>
+      `<div class="lg${hidden.has(d) ? " off" : ""}" data-d="${d}"><span class="dot" style="background:${colorOf(d)};box-shadow:0 0 6px ${colorOf(d)}"></span>Depth ${d} (${cnt[d]})</div>`).join("");
+  }
+
+  function updateCounter() {
+    const vn = data.nodes.filter((n) => !hidden.has(n.depth)).length;
+    const vl = links0.filter((l) => !hidden.has(depthOf(l.source)) && !hidden.has(depthOf(l.target))).length;
+    $("cNodes").textContent = vn.toLocaleString("id-ID");
+    $("cLinks").textContent = vl.toLocaleString("id-ID");
+  }
+
+  /* ---------------- event UI ---------------- */
+  function bindUI() {
+    $("btnFit").onclick = () => Graph.zoomToFit(600, 50, (n) => !hidden.has(n.depth));
+    $("btnSet").onclick = () => $("gset").classList.toggle("open");
+    $("btnDl").onclick = downloadGraph;
+    $("btnRelayout").onclick = () => {
+      data.nodes.forEach((n) => { n.fx = n.fy = undefined; });
+      selectNode(null, false); reheat(true);
+    };
+    $("btnFs").onclick = () => {
+      const c = $("graphCard");
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (c.requestFullscreen) c.requestFullscreen();
+    };
+    $("pClose").onclick = () => selectNode(null, false);
+    $("pBody").onclick = (e) => {
+      const it = e.target.closest(".it");
+      if (it) { const n = nodeById.get(it.dataset.id); if (n) selectNode(n, true); return; }
+      if (e.target.id === "pPin" && selected) {
+        if (selected.fx != null) unpin(selected);
+        else { selected.fx = selected.x; selected.fy = selected.y; showPanel(selected); redraw(); }
+      }
+    };
+    $("legend").onclick = (e) => {
+      const lg = e.target.closest(".lg");
+      if (!lg) return;
+      const d = +lg.dataset.d;
+      hidden.has(d) ? hidden.delete(d) : hidden.add(d);
+      if (selected && hidden.has(selected.depth)) selectNode(null, false);
+      buildLegend(); updateCounter(); redraw();
+    };
+    $("layout").onchange = (e) => { layout = e.target.value; applyForces(); reheat(true); };
+    $("sizeBy").onchange = (e) => { sizeBy = e.target.value; Graph.nodeVal(Graph.nodeVal()); applyForces(); reheat(false); };
+    $("labelMode").onchange = (e) => { labelMode = e.target.value; redraw(); };
+    $("sRep").oninput = (e) => { repulse = +e.target.value; applyForces(); reheat(false); };
+    $("sLink").oninput = (e) => { spacing = +e.target.value / 10; applyForces(); reheat(false); };
+    $("cPart").onchange = (e) => { particles = e.target.checked; redraw(); };
+
+    // pencarian
+    const q = $("q"), sg = $("sugg");
+    const pick = (id) => { const n = nodeById.get(id); if (!n) return; sg.style.display = "none"; q.value = ""; selectNode(n, true); };
+    q.addEventListener("input", () => {
+      const v = q.value.trim().toLowerCase();
+      if (!v) { sg.style.display = "none"; return; }
+      const m = data.nodes.filter((n) => n.id.toLowerCase().includes(v)).sort((a, b) => b.pr - a.pr).slice(0, 8);
+      sg.innerHTML = m.map((n) => `<div data-id="${esc(n.id)}">${esc(shortUrl(n.id, 70))}</div>`).join("");
+      sg.style.display = m.length ? "block" : "none";
+    });
+    q.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { const f = sg.querySelector("div"); if (f) pick(f.dataset.id); }
+    });
+    sg.onclick = (e) => { const d = e.target.closest("div[data-id]"); if (d) pick(d.dataset.id); };
+    document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sg.style.display = "none"; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") selectNode(null, false); });
+  }
+
+  /* ---------------- muat data ---------------- */
+  function loadGraph(g) {
+    $("graphCard").classList.add("show");
+    initGraph();
+    fitted = false; selected = null; hover = null; hidden.clear(); showPanel(null);
+
+    maxPr = Math.max(...g.nodes.map((n) => n.pr), 1e-12);
+    maxIn = Math.max(...g.nodes.map((n) => n.in), 1);
+    nodeById = new Map(); outMap = new Map(); inMap = new Map();
+    data.nodes = g.nodes.map((n) => ({ ...n, deg: 0 }));
+    data.nodes.forEach((n) => { nodeById.set(n.id, n); outMap.set(n.id, new Set()); inMap.set(n.id, new Set()); });
+    links0 = g.links.filter((l) => nodeById.has(l.source) && nodeById.has(l.target));
+    links0.forEach((l) => { outMap.get(l.source).add(l.target); inMap.get(l.target).add(l.source); });
+    data.nodes.forEach((n) => { n.deg = outMap.get(n.id).size + inMap.get(n.id).size; });
+    baseAlpha = links0.length > 8000 ? 0.09 : links0.length > 3000 ? 0.14 : 0.22;
+
+    buildLegend(); updateCounter();
+    Graph.width($("graphBox").clientWidth).height($("graphBox").clientHeight);
+    Graph.graphData({ nodes: data.nodes, links: links0.map((l) => ({ source: l.source, target: l.target })) });
+    applyForces();
+    Graph.d3ReheatSimulation();
+  }
+
+  function downloadGraph() {
+    if (!lastResult) return;
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "graph-hasil-crawling.json";
+    a.click();
+  }
+
+  /* ---------------- statistik & tabel ---------------- */
+  function renderStats(r) {
+    const chips = Object.entries(r.nodes_per_depth)
+      .map(([d, n]) => `<span class="chip"><span class="dot" style="background:${colorOf(+d)}"></span>Depth ${d}: ${n} node</span>`).join("");
+    $("stats").innerHTML = `
+      <div class="card">
+        <div class="stats">
+          <div class="stat"><b>${r.total_nodes}</b><span>Total node (halaman)</span></div>
+          <div class="stat"><b>${r.total_edges}</b><span>Total edge (link)</span></div>
+          <div class="stat"><b>${r.crawled_pages}</b><span>Halaman di-crawl</span></div>
+          <div class="stat"><b>${r.max_depth_reached}</b><span>Kedalaman tercapai</span></div>
+          <div class="stat"><b>${r.elapsed_sec}s</b><span>Waktu (${esc(r.stopped_because)})</span></div>
+        </div>
+        <div class="chips">${chips}</div>
+        ${r.graph.truncated ? `<div class="muted" style="margin-top:10px">Graph di bawah menampilkan ${r.graph.nodes.length} node dengan PageRank tertinggi dari ${r.total_nodes} node.</div>` : ""}
+      </div>`;
+  }
+
+  function renderTable(r) {
+    const max = r.top10.length ? r.top10[0].score : 1;
+    const rows = r.top10.map((t) => `
+      <tr class="click" data-url="${esc(t.url)}">
+        <td class="rank">#${t.rank}</td>
+        <td class="url">${esc(t.url)}<div class="bar"><i style="width:${(t.score / max) * 100}%"></i></div></td>
+        <td>${t.score.toFixed(6)}</td><td>${t.depth}</td><td>${t.inlinks}</td><td>${t.outlinks}</td>
+      </tr>`).join("");
+    $("table").innerHTML = `
+      <div class="card">
+        <b>Top 10 PageRank (dari ${r.total_nodes} node)</b>
+        <div class="muted" style="margin:4px 0 8px">Klik baris untuk menyorot node di graph (nomor peringkat tampil di dalam node).</div>
+        <div class="scroll"><table>
+          <thead><tr><th>Rank</th><th>URL</th><th>Skor</th><th>Depth</th><th>Inlink</th><th>Outlink</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </div>`;
+    document.querySelectorAll("tr.click").forEach((tr) => {
+      tr.onclick = () => {
+        const n = nodeById.get(tr.dataset.url);
+        if (!n) return;
+        selectNode(n, true);
+        $("graphCard").scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+    });
+  }
+
+  async function run() {
     const btn = $("go");
-    btn.disabled = true;
-    btn.textContent = "Sedang crawling...";
-    $("out").innerHTML = '<div class="card muted">Crawling dan menghitung PageRank, mohon tunggu sampai batas waktu...</div>';
+    btn.disabled = true; btn.textContent = "Sedang crawling...";
+    $("msg").innerHTML = '<div class="card muted">Crawling dan menghitung PageRank, mohon tunggu sampai batas waktu...</div>';
     try {
       const res = await fetch(API_BASE + "/api/analyze", {
         method: "POST",
@@ -91,71 +615,24 @@
           max_depth: +$("depth").value,
           max_pages: +$("pages").value,
           time_budget: +$("time").value,
-          include_edges: includeEdges === true,
+          graph_nodes: +$("gnodes").value,
         }),
       });
       if (!res.ok) throw new Error((await res.text()).slice(0, 300));
       lastResult = await res.json();
-      render(lastResult);
+      $("msg").innerHTML = "";
+      top10 = new Map(lastResult.top10.map((t) => [t.url, t.rank]));
+      renderStats(lastResult);
+      loadGraph(lastResult.graph);
+      renderTable(lastResult);
     } catch (e) {
-      $("out").innerHTML = '<div class="card err">Gagal: ' + esc(e.message) + "</div>";
+      $("msg").innerHTML = '<div class="card err">Gagal: ' + esc(e.message) + "</div>";
     } finally {
-      btn.disabled = false;
-      btn.textContent = "Mulai Crawling";
+      btn.disabled = false; btn.textContent = "Mulai Crawling";
     }
   }
 
-  function render(r) {
-    const max = r.top10.length ? r.top10[0].score : 1;
-    const rows = r.top10.map((t) => `
-      <tr>
-        <td class="rank">#${t.rank}</td>
-        <td class="url">${esc(t.url)}<div class="bar"><i style="width:${(t.score / max) * 100}%"></i></div></td>
-        <td>${t.score.toFixed(6)}</td>
-        <td>${t.depth}</td>
-        <td>${t.inlinks}</td>
-        <td>${t.outlinks}</td>
-      </tr>`).join("");
-    const chips = Object.entries(r.nodes_per_depth)
-      .map(([d, n]) => `<span class="chip">Depth ${d}: ${n} node</span>`).join("");
-
-    $("out").innerHTML = `
-      <div class="card">
-        <div class="stats">
-          <div class="stat"><b>${r.total_nodes}</b><span>Total node (halaman)</span></div>
-          <div class="stat"><b>${r.total_edges}</b><span>Total edge (link)</span></div>
-          <div class="stat"><b>${r.crawled_pages}</b><span>Halaman di-crawl</span></div>
-          <div class="stat"><b>${r.max_depth_reached}</b><span>Kedalaman tercapai</span></div>
-          <div class="stat"><b>${r.elapsed_sec}s</b><span>Waktu (${esc(r.stopped_because)})</span></div>
-        </div>
-        <div class="depth">${chips}</div>
-      </div>
-      <div class="card">
-        <b>Top 10 PageRank (dari ${r.total_nodes} node)</b>
-        <div class="scroll"><table>
-          <thead><tr><th>Rank</th><th>URL</th><th>Skor</th><th>Depth</th><th>Inlink</th><th>Outlink</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>
-      <div class="card">
-        <button class="ghost" id="dl">Unduh graph lengkap (JSON: node, depth, edge)</button>
-        <span class="muted"> untuk analisis lanjutan</span>
-      </div>`;
-    $("dl").onclick = downloadFull;
-  }
-
-  async function downloadFull() {
-    $("dl").disabled = true;
-    $("dl").textContent = "Menyiapkan (crawl ulang)...";
-    await run(true);
-    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "graph-hasil-crawling.json";
-    a.click();
-  }
-
-  $("go").onclick = () => run(false);
+  $("go").onclick = run;
 </script>
 </body>
 </html>

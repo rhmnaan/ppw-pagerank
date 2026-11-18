@@ -27,6 +27,7 @@ class AnalyzeReq(BaseModel):
     max_depth: int = Field(2, ge=1, le=6)
     max_pages: int = Field(300, ge=10, le=5000)
     time_budget: int = Field(40, ge=5, le=55)
+    graph_nodes: int = Field(1500, ge=50, le=5000)   # BARU: jumlah node yang digambar
     include_edges: bool = False
 
 
@@ -158,6 +159,28 @@ def analyze(req: AnalyzeReq):
     for u, dd in depth.items():
         per_depth[dd] = per_depth.get(dd, 0) + 1
 
+    # ---- BARU: data graph untuk visualisasi ----
+    keep_idx = np.argsort(-pr)[: req.graph_nodes]
+    keep = {nodes[i] for i in keep_idx}
+    graph = {
+        "nodes": [
+            {
+                "id": nodes[i],
+                "depth": depth[nodes[i]],
+                "pr": float(pr[i]),
+                "in": int(indeg[i]),
+                "out": int(outdeg[i]),
+            }
+            for i in keep_idx
+        ],
+        "links": [
+            {"source": s, "target": t}
+            for s, t in edges
+            if s in keep and t in keep
+        ][:20000],
+        "truncated": len(nodes) > len(keep),
+    }
+
     result = {
         "seed": seed,
         "total_nodes": len(nodes),
@@ -168,12 +191,12 @@ def analyze(req: AnalyzeReq):
         "elapsed_sec": elapsed,
         "stopped_because": stopped,
         "top10": top,
+        "graph": graph,
     }
     if req.include_edges:
         result["edges"] = [{"src": s, "dst": t} for s, t in list(edges)[:20000]]
         result["depths"] = depth
     return result
-
 
 @app.get("/api/health")
 def health():
