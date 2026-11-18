@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PageRank Crawler - PPW</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, Segoe UI, Roboto, sans-serif; background: #f3f5f9; color: #1f2937; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #6b7280; margin-bottom: 20px; font-size: 14px; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  input, select { padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+  input.url { width: 340px; max-width: 100%; }
+  button { padding: 10px 18px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
+  button:disabled { background: #93c5fd; cursor: wait; }
+  button.ghost { background: #e5e7eb; color: #111827; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: #f9fafb; border-radius: 10px; padding: 12px; }
+  .stat b { display: block; font-size: 20px; }
+  .stat span { font-size: 12px; color: #6b7280; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+  th { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+  td.url { word-break: break-all; }
+  .rank { font-weight: 700; color: #2563eb; }
+  .bar { height: 8px; background: #dbeafe; border-radius: 4px; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: #2563eb; border-radius: 4px; }
+  .depth { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 999px; font-size: 13px; }
+  .err { color: #b91c1c; }
+  .muted { color: #6b7280; font-size: 13px; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Analisis Link &amp; PageRank Website</h1>
+  <div class="sub">Masukkan URL, sistem akan crawling, membentuk graph, lalu menghitung 10 halaman terpenting.</div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>URL website</label>
+        <input class="url" id="url" value="https://www.trunojoyo.ac.id">
+      </div>
+      <div>
+        <label>Kedalaman maks</label>
+        <select id="depth">
+          <option>1</option><option selected>2</option><option>3</option><option>4</option>
+        </select>
+      </div>
+      <div>
+        <label>Maks halaman</label>
+        <input id="pages" type="number" value="300" min="10" max="5000" style="width:100px">
+      </div>
+      <div>
+        <label>Batas waktu (detik)</label>
+        <input id="time" type="number" value="40" min="5" max="55" style="width:100px">
+      </div>
+      <button id="go">Mulai Crawling</button>
+    </div>
+    <div class="muted" style="margin-top:10px">Di Vercel, crawling dibatasi waktu request. Untuk graph besar, jalankan di server lab.</div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+  // Saat dipindah ke server lab dengan frontend terpisah, isi dengan alamat API-nya, mis. "http://192.168.x.x:8000"
+  const API_BASE = "";
+  let lastResult = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  async function run(includeEdges) {
+    const btn = $("go");
+    btn.disabled = true;
+    btn.textContent = "Sedang crawling...";
+    $("out").innerHTML = '<div class="card muted">Crawling dan menghitung PageRank, mohon tunggu sampai batas waktu...</div>';
+    try {
+      const res = await fetch(API_BASE + "/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: $("url").value,
+          max_depth: +$("depth").value,
+          max_pages: +$("pages").value,
+          time_budget: +$("time").value,
+          include_edges: includeEdges === true,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.text()).slice(0, 300));
+      lastResult = await res.json();
+      render(lastResult);
+    } catch (e) {
+      $("out").innerHTML = '<div class="card err">Gagal: ' + esc(e.message) + "</div>";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Mulai Crawling";
+    }
+  }
+
+  function render(r) {
+    const max = r.top10.length ? r.top10[0].score : 1;
+    const rows = r.top10.map((t) => `
+      <tr>
+        <td class="rank">#${t.rank}</td>
+        <td class="url">${esc(t.url)}<div class="bar"><i style="width:${(t.score / max) * 100}%"></i></div></td>
+        <td>${t.score.toFixed(6)}</td>
+        <td>${t.depth}</td>
+        <td>${t.inlinks}</td>
+        <td>${t.outlinks}</td>
+      </tr>`).join("");
+    const chips = Object.entries(r.nodes_per_depth)
+      .map(([d, n]) => `<span class="chip">Depth ${d}: ${n} node</span>`).join("");
+
+    $("out").innerHTML = `
+      <div class="card">
+        <div class="stats">
+          <div class="stat"><b>${r.total_nodes}</b><span>Total node (halaman)</span></div>
+          <div class="stat"><b>${r.total_edges}</b><span>Total edge (link)</span></div>
+          <div class="stat"><b>${r.crawled_pages}</b><span>Halaman di-crawl</span></div>
+          <div class="stat"><b>${r.max_depth_reached}</b><span>Kedalaman tercapai</span></div>
+          <div class="stat"><b>${r.elapsed_sec}s</b><span>Waktu (${esc(r.stopped_because)})</span></div>
+        </div>
+        <div class="depth">${chips}</div>
+      </div>
+      <div class="card">
+        <b>Top 10 PageRank (dari ${r.total_nodes} node)</b>
+        <div class="scroll"><table>
+          <thead><tr><th>Rank</th><th>URL</th><th>Skor</th><th>Depth</th><th>Inlink</th><th>Outlink</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <button class="ghost" id="dl">Unduh graph lengkap (JSON: node, depth, edge)</button>
+        <span class="muted"> untuk analisis lanjutan</span>
+      </div>`;
+    $("dl").onclick = downloadFull;
+  }
+
+  async function downloadFull() {
+    $("dl").disabled = true;
+    $("dl").textContent = "Menyiapkan (crawl ulang)...";
+    await run(true);
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "graph-hasil-crawling.json";
+    a.click();
+  }
+
+  $("go").onclick = () => run(false);
+</script>
+</body>
+</html>
