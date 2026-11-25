@@ -118,19 +118,7 @@
       </div>
       <div>
         <label>Kedalaman maks</label>
-        <select id="depth"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
-      </div>
-      <div>
-        <label>Maks halaman</label>
-        <input id="pages" type="number" value="300" min="10" max="5000" style="width:100px">
-      </div>
-      <div>
-        <label>Batas waktu (detik)</label>
-        <input id="time" type="number" value="40" min="5" max="55" style="width:100px">
-      </div>
-      <div>
-        <label>Node digambar</label>
-        <input id="gnodes" type="number" value="1500" min="50" max="5000" style="width:100px">
+        <select id="depth"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
       </div>
       <button id="go">Mulai Crawling</button>
     </div>
@@ -613,9 +601,6 @@
         body: JSON.stringify({
           url: $("url").value,
           max_depth: +$("depth").value,
-          max_pages: +$("pages").value,
-          time_budget: +$("time").value,
-          graph_nodes: +$("gnodes").value,
         }),
       });
       if (!res.ok) throw new Error((await res.text()).slice(0, 300));
