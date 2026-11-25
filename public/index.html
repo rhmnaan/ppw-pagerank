@@ -180,8 +180,9 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.min.js"></script>
 <script>
-  // Saat frontend dipisah dari backend (mis. di server lab), isi dengan alamat API, contoh "http://192.168.x.x:8000"
-  const API_BASE = "http://127.0.0.1:8000";
+  // API berada di origin yang sama saat dijalankan lokal maupun di Vercel.
+  // Jika frontend dipisah dari backend, set window.API_BASE sebelum script ini.
+  const API_BASE = window.API_BASE || "";
 
   const TAU = Math.PI * 2;
   const COLORS = ["#ff5ca8", "#ffd54a", "#4fd1ff", "#7cf29a", "#b794f6", "#8aa0b5"];

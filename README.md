@@ -3,9 +3,11 @@
 Crawler website + graph link + perhitungan PageRank (top 10), dibuat untuk tugas PPW.
 
 ## Alur
+
 Masukkan URL dan kedalaman -> telusuri link secara snowball per level sampai kedalaman tersebut -> bentuk graph dari seluruh halaman dan link yang ditemukan -> hitung PageRank -> tampilkan 10 halaman terpenting beserta kedalaman, inlink, dan outlink.
 
 ## Struktur
+
 - `api/index.py` : backend FastAPI (crawler + PageRank)
 - `public/index.html` : tampilan web
 - `vercel.json` : konfigurasi Vercel
@@ -31,5 +33,6 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Buka http://localhost:8000 di browser. Hentikan server dengan `Ctrl+C`.
 
 ## Deploy
+
 - Vercel: import repo ini lalu Deploy
 - Server lab: `uvicorn api.index:app --host 0.0.0.0 --port 8000`
