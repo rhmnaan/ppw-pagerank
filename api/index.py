@@ -2,7 +2,7 @@ import os
 import re
 import time
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutTimeout
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urldefrag, urlparse
 
 import numpy as np
@@ -31,20 +31,15 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
     "Accept-Language": "id,en;q=0.8",
 }
-MAX_BYTES = 1_000_000
-MAX_CRAWL_PAGES = 500
-MAX_CRAWL_SECONDS = 55
-
-
 class AnalyzeReq(BaseModel):
     url: str
     max_depth: int = Field(..., ge=1, le=6)
 
 
-def http_get(url: str, timeout: int):
+def http_get(url: str):
     if cffi_requests:
-        return cffi_requests.get(url, headers=HEADERS, timeout=timeout, impersonate="chrome")
-    return requests.get(url, headers=HEADERS, timeout=timeout)
+        return cffi_requests.get(url, headers=HEADERS, impersonate="chrome")
+    return requests.get(url, headers=HEADERS)
 
 
 def error_kind(e: Exception) -> str:
@@ -80,14 +75,14 @@ def allowed(url: str, domains: set) -> bool:
 def probe_seed(seed: str):
     """Tes halaman awal dulu supaya penyebab gagal jelas bagi pengguna."""
     try:
-        r = http_get(seed, 10)
+        r = http_get(seed)
     except Exception as e:
         kind = error_kind(e)
         detail = str(e).replace("\n", " ")[:160]
         if kind == "ssl":
             raise HTTPException(422, f"Sertifikat SSL situs tidak bisa diverifikasi. ({detail})")
         if kind == "timeout":
-            raise HTTPException(504, f"Situs tidak merespons dalam 10 detik. ({detail})")
+            raise HTTPException(504, f"Koneksi ke situs kehabisan waktu. ({detail})")
         if kind == "reset":
             raise HTTPException(
                 422,
@@ -109,7 +104,7 @@ def probe_seed(seed: str):
 def fetch_links(url: str, domains: set):
     """Return (url, set_link, pesan_error_atau_None)."""
     try:
-        r = http_get(url, 6)
+        r = http_get(url)
     except Exception as e:
         return url, set(), ("timeout" if error_kind(e) == "timeout" else "koneksi gagal")
     if r.status_code >= 400:
@@ -117,7 +112,7 @@ def fetch_links(url: str, domains: set):
     if "text/html" not in r.headers.get("Content-Type", ""):
         return url, set(), None  # file non-HTML bukan error
     try:
-        soup = BeautifulSoup(r.content[:MAX_BYTES], "html.parser")
+        soup = BeautifulSoup(r.content, "html.parser")
     except Exception:
         return url, set(), "HTML tidak terbaca"
     links = set()
@@ -138,16 +133,10 @@ def crawl(seed: str, max_depth: int, domains: set, workers: int = 12):
     stopped = "selesai"
 
     while level and d <= max_depth:
-        remaining = MAX_CRAWL_SECONDS - (time.time() - start)
-        if remaining < 2:
-            stopped = "waktu habis"
-            break
-
-        ex = ThreadPoolExecutor(workers)
-        futures = [ex.submit(fetch_links, u, domains) for u in level]
         next_level = []
-        try:
-            for f in as_completed(futures, timeout=remaining):
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(fetch_links, u, domains) for u in level]
+            for f in as_completed(futures):
                 url, links, err = f.result()
                 crawled.add(url)
                 if err:
@@ -155,21 +144,12 @@ def crawl(seed: str, max_depth: int, domains: set, workers: int = 12):
                 for l in links:
                     if l in depth:
                         edges.add((url, l))
-                    elif d < max_depth and len(depth) < MAX_CRAWL_PAGES:
+                    elif d < max_depth:
                         depth[l] = d + 1
                         next_level.append(l)
                         edges.add((url, l))
-        except FutTimeout:
-            stopped = "waktu habis"
-        finally:
-            ex.shutdown(wait=False, cancel_futures=True)
-
-        if stopped == "waktu habis":
-            break
         level, d = next_level, d + 1
 
-    if stopped == "selesai" and len(depth) >= MAX_CRAWL_PAGES:
-        stopped = "mencapai batas pengaman jumlah halaman"
     return depth, edges, crawled, errs, round(time.time() - start, 1), stopped
 
 
@@ -248,7 +228,7 @@ def analyze(req: AnalyzeReq):
             {"source": s, "target": t}
             for s, t in edges
             if s in keep and t in keep
-        ][:20000],
+        ],
         "truncated": False,
     }
 

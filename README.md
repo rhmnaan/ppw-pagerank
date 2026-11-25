@@ -3,7 +3,7 @@
 Crawler website + graph link + perhitungan PageRank (top 10), dibuat untuk tugas PPW.
 
 ## Alur
-Masukkan URL dan kedalaman -> telusuri link secara snowball per level sampai kedalaman tersebut -> bentuk graph dari halaman yang ditemukan -> hitung PageRank -> tampilkan 10 halaman terpenting beserta kedalaman, inlink, dan outlink. Jumlah halaman dan node graph mengikuti hasil crawling, dengan batas pengaman server maksimum 500 halaman atau 55 detik.
+Masukkan URL dan kedalaman -> telusuri link secara snowball per level sampai kedalaman tersebut -> bentuk graph dari seluruh halaman dan link yang ditemukan -> hitung PageRank -> tampilkan 10 halaman terpenting beserta kedalaman, inlink, dan outlink.
 
 ## Struktur
 - `api/index.py` : backend FastAPI (crawler + PageRank)
